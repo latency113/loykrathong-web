@@ -294,7 +294,7 @@ export default function RiverApp() {
         </aside>
       )}
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col items-center gap-3 pb-6">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col items-center gap-2.5 pb-4">
         <p className="hidden text-xs text-slate-300/80 sm:block">
           ลากซ้าย-ขวาเพื่อเลื่อน · สกรอลล์เพื่อซูม · กด ♥ ส่งใจให้กระทง
         </p>
@@ -305,6 +305,9 @@ export default function RiverApp() {
         >
           ปล่อยกระทง
         </button>
+        <p className="text-[11px] text-slate-400/75">
+          Made by <span className="font-medium text-amber-200/85">khan.nn03</span>
+        </p>
       </div>
 
       {welcomeOpen && (
