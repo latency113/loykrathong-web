@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: #071528;
+  color: #e8eef7;
+  font-family:
+    "Noto Sans Thai", "IBM Plex Sans Thai", "Sukhumvit Set", system-ui,
+    -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+canvas {
+  touch-action: none;
+}
