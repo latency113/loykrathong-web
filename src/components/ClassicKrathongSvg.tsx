@@ -96,8 +96,8 @@ function FlowerIcon({
 }
 
 /**
- * Wraps an uploaded user photo inside a golden circular medallion resting
- * on a festive krathong base with glowing candle flame.
+ * Wraps an uploaded user photo inside a golden circular medallion nestled
+ * on top of the illustrated banana-leaf krathong with Lottie sparkles.
  */
 export function PhotoKrathongFrame({
   imageUrl,
@@ -109,9 +109,9 @@ export function PhotoKrathongFrame({
   className?: string;
 }) {
   return (
-    <div className={`relative flex flex-col items-center justify-end ${className}`}>
-      {/* Circular golden photo frame */}
-      <div className="relative z-10 h-[72%] w-[72%] overflow-hidden rounded-full border-2 border-amber-300 bg-[#0b1726] shadow-[0_0_20px_rgba(251,191,36,0.4)]">
+    <div className={`relative ${className}`}>
+      {/* Circular golden photo medallion (always 1:1, never squished) */}
+      <div className="absolute left-1/2 top-0 z-10 aspect-square w-[62%] -translate-x-1/2 overflow-hidden rounded-full border-2 border-amber-300 bg-[#0b1726] shadow-[0_0_18px_rgba(251,191,36,0.45)]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={imageUrl}
@@ -122,34 +122,21 @@ export function PhotoKrathongFrame({
         />
       </div>
 
-      {/* Tiny candle flame perched at the top of the frame */}
-      <span className="pointer-events-none absolute top-0 left-1/2 z-20 h-3.5 w-2.5 -translate-x-1/2 rounded-full bg-gradient-to-t from-orange-400 via-amber-200 to-white shadow-[0_0_10px_rgba(253,224,71,0.9)]" />
+      {/* Illustrated krathong base cradling the photo */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/krathongs/banana-leaf.png"
+        alt=""
+        draggable={false}
+        className="pointer-events-none absolute bottom-0 left-1/2 z-0 h-[58%] w-[94%] -translate-x-1/2 object-contain drop-shadow-[0_8px_14px_rgba(0,0,0,0.6)]"
+      />
 
-      {/* Festive lotus/leaf krathong base beneath the medallion */}
-      <svg
-        viewBox="0 0 120 42"
-        className="pointer-events-none -mt-3.5 h-[36%] w-[94%] drop-shadow-[0_6px_10px_rgba(0,0,0,0.6)]"
-        aria-hidden="true"
-      >
-        <path
-          d="M12 16 Q60 44 108 16 L98 30 Q60 46 22 30 Z"
-          fill="#15803d"
-          stroke="#bef264"
-          strokeOpacity="0.4"
-          strokeWidth="1"
-        />
-        <path
-          d="M14 18 L24 6 L34 18 L46 5 L60 17 L74 5 L86 18 L96 6 L106 18 Q60 30 14 18 Z"
-          fill="#22c55e"
-          fillOpacity="0.88"
-          stroke="#fef08a"
-          strokeOpacity="0.45"
-          strokeWidth="0.9"
-        />
-        <circle cx="32" cy="21" r="3" fill="#fde047" />
-        <circle cx="60" cy="24" r="3.2" fill="#f472b6" />
-        <circle cx="88" cy="21" r="3" fill="#fde047" />
-      </svg>
+      <Lottie
+        src={sparkleAnimation}
+        autoplay
+        loop
+        className="pointer-events-none absolute inset-0 z-20 h-full w-full opacity-75"
+      />
     </div>
   );
 }

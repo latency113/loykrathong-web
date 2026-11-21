@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
-import ClassicKrathongSvg, { PhotoKrathongFrame } from "./ClassicKrathongSvg";
+import ClassicKrathongSvg from "./ClassicKrathongSvg";
 import KrathongForm from "./KrathongForm";
 import { riverAudio } from "@/lib/krathong/audio";
 import { useRiver } from "@/lib/krathong/use-river";
@@ -250,13 +250,12 @@ export default function RiverApp() {
             </button>
           </div>
           {selected.imageUrl ? (
-            <div className="mt-3 flex h-40 w-full items-center justify-center rounded-xl border border-white/10 bg-[#081528]">
-              <PhotoKrathongFrame
-                imageUrl={selected.imageUrl}
-                alt={`กระทงของ ${selected.nickname}`}
-                className="h-32 w-32"
-              />
-            </div>
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={selected.imageUrl}
+              alt={`กระทงของ ${selected.nickname}`}
+              className="mt-3 max-h-64 w-full rounded-xl border border-white/10 bg-[#081528] object-contain"
+            />
           ) : selected.config ? (
             <div className="mt-3 flex h-40 w-full items-center justify-center rounded-xl border border-white/10 bg-[#081528]">
               <ClassicKrathongSvg config={selected.config} className="h-32 w-32" />
