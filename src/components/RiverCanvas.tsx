@@ -3,7 +3,14 @@
 import { useMemo, useRef, useState } from "react";
 import ClassicKrathongSvg, { PhotoKrathongFrame } from "./ClassicKrathongSvg";
 import PixiRiverBackground from "./PixiRiverBackground";
-import { RIVER, type Krathong, type RiverScene } from "@/lib/krathong/schema";
+import SkyLanternSvg from "./SkyLanternSvg";
+import {
+  LANTERN_COLOR_STYLES,
+  RIVER,
+  type Krathong,
+  type Lantern,
+  type RiverScene,
+} from "@/lib/krathong/schema";
 
 const STARS = [
   { left: "8%", top: "7%", size: 2, delay: "0s" },
@@ -87,22 +94,42 @@ function mapToViewport(k: Krathong, index: number) {
   return { offsetX, topPct, scale, durationSec, delaySec };
 }
 
+function mapLantern(lantern: Lantern, index: number) {
+  const leftPct = 50 + lantern.x * 42;
+  // Relative to the 35%-tall sky layer, so the lantern sits at ~10-28% viewport.
+  const topPct = 28 + lantern.y * 52;
+  const scale = 0.82 + lantern.y * 0.22;
+  const durationSec = 9 + (index % 6) * 1.6;
+  const delaySec = -((index * 2.3) % 10);
+  return { leftPct, topPct, scale, durationSec, delaySec };
+}
+
 export default function RiverCanvas({
   krathongs,
+  lanterns,
   selectedId,
+  selectedLanternId,
   scene,
   celebrationKey,
   blessedIds,
+  blessedLanternIds,
   onSelect,
+  onSelectLantern,
   onBless,
+  onBlessLantern,
 }: {
   krathongs: Krathong[];
+  lanterns: Lantern[];
   selectedId: string | null;
+  selectedLanternId: string | null;
   scene: RiverScene;
   celebrationKey: number;
   blessedIds: Set<string>;
+  blessedLanternIds: Set<string>;
   onSelect: (id: string | null) => void;
+  onSelectLantern: (id: string | null) => void;
   onBless: (id: string) => void;
+  onBlessLantern: (id: string) => void;
 }) {
   const [panX, setPanX] = useState(0);
   const [zoom, setZoom] = useState(1);
@@ -114,6 +141,11 @@ export default function RiverCanvas({
   const positioned = useMemo(
     () => krathongs.map((k, idx) => ({ k, ...mapToViewport(k, idx) })),
     [krathongs],
+  );
+
+  const positionedLanterns = useMemo(
+    () => lanterns.map((l, idx) => ({ l, ...mapLantern(l, idx) })),
+    [lanterns],
   );
 
   const theme = SCENE_THEME[scene];
@@ -233,10 +265,11 @@ export default function RiverCanvas({
             }}
             className="absolute"
           >
-            <div className="absolute -inset-3 rounded-full bg-amber-400/25 blur-md" />
-            <div className="relative h-7 w-5 rounded-t-full rounded-b-sm bg-gradient-to-b from-amber-200 via-orange-400 to-amber-600 shadow-[0_0_16px_rgba(251,191,36,0.75)]">
-              <span className="absolute bottom-0.5 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-yellow-100" />
-            </div>
+            <div className="absolute -inset-2 rounded-full bg-amber-400/20 blur-md" />
+            <SkyLanternSvg
+              color="amber"
+              className="relative h-9 w-7 drop-shadow-[0_0_12px_rgba(251,191,36,0.6)]"
+            />
           </div>
         ))}
 
@@ -390,6 +423,74 @@ export default function RiverCanvas({
         })}
       </div>
 
+      {/* Released sky lanterns — click one to read its wish */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-[35%]">
+        {positionedLanterns.map(
+          ({ l, leftPct, topPct, scale, durationSec, delaySec }) => {
+            const isSelected = l.id === selectedLanternId;
+            const isBlessed = blessedLanternIds.has(l.id);
+            const lanternStyle = LANTERN_COLOR_STYLES[l.color];
+            return (
+              <div
+                key={l.id}
+                style={{
+                  left: `${leftPct}%`,
+                  top: `${topPct}%`,
+                  transform: `translate(-50%, -50%) scale(${
+                    isSelected ? scale * 1.22 : scale
+                  })`,
+                  animation: `lantern-drift ${durationSec}s ease-in-out ${delaySec}s infinite`,
+                }}
+                className={`group absolute ${isSelected ? "z-20" : "z-10 hover:z-20"}`}
+              >
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!dragRef.current.moved) onSelectLantern(l.id);
+                  }}
+                  className="pointer-events-auto relative flex flex-col items-center focus:outline-none"
+                  aria-label={`โคมของ ${l.nickname}`}
+                >
+                  <span
+                    className={`pointer-events-none absolute top-0 h-16 w-14 rounded-full blur-xl transition ${lanternStyle.glow} ${
+                      isSelected ? "opacity-100" : "opacity-75 group-hover:opacity-100"
+                    }`}
+                  />
+                  <SkyLanternSvg
+                    color={l.color}
+                    className={`relative h-12 w-10 transition group-hover:scale-110 ${
+                      isSelected
+                        ? "drop-shadow-[0_0_16px_rgba(253,230,138,0.9)]"
+                        : "drop-shadow-[0_0_10px_rgba(251,191,36,0.55)]"
+                    }`}
+                  />
+                  <span
+                    className={`mt-1 max-w-[96px] truncate rounded-full border bg-black/55 px-2 py-0.5 text-[10px] font-medium text-amber-50 backdrop-blur-sm ${lanternStyle.border}`}
+                  >
+                    {l.nickname}
+                  </span>
+                  <span
+                    className={`mt-0.5 rounded-full border px-1.5 text-[9px] backdrop-blur-sm ${
+                      isBlessed
+                        ? "border-rose-400/50 bg-rose-500/25 text-rose-200"
+                        : "border-white/10 bg-black/40 text-slate-300"
+                    }`}
+                  >
+                    ♥ {l.blessings}
+                  </span>
+                  {l.wish && (
+                    <span className="pointer-events-none absolute top-full mt-1 hidden max-w-[180px] rounded-xl border border-amber-200/20 bg-[#0e1938]/90 px-2.5 py-1 text-center text-[11px] leading-snug text-amber-50/95 shadow-md backdrop-blur-sm group-hover:block">
+                      “{l.wish}”
+                    </span>
+                  )}
+                </button>
+              </div>
+            );
+          },
+        )}
+      </div>
+
       {/* Left / Right pan controls */}
       <button
         type="button"
@@ -483,6 +584,17 @@ export default function RiverCanvas({
           }
           50% {
             margin-top: -10px;
+            margin-left: 5px;
+          }
+        }
+        @keyframes lantern-drift {
+          0%,
+          100% {
+            margin-top: 3px;
+            margin-left: -4px;
+          }
+          50% {
+            margin-top: -9px;
             margin-left: 5px;
           }
         }

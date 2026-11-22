@@ -1,7 +1,8 @@
 # Loy Krathong
 
-An online Loy Krathong river. Visitors design a 3D krathong, write a wish, and
-release it into a shared river that other visitors see in realtime.
+An online Loy Krathong river. Visitors design a 3D krathong or release a sky
+lantern, write a wish, and send it into a shared river and sky that other
+visitors see in realtime.
 
 ## Stack
 
@@ -27,7 +28,9 @@ the experience playable.
 ## Database setup
 
 1. Create a project at [supabase.com](https://supabase.com) (free plan).
-2. SQL Editor → paste `supabase/migrations/0001_init.sql` → Run.
+2. SQL Editor → run the files in `supabase/migrations/` in order
+   (`0001_init.sql`, `0002_image_krathongs.sql`, `0003_blessings.sql`,
+   `0004_lanterns.sql`).
 3. Project → **Connect** dialog (or Settings → API Keys) → copy the URL,
    the publishable key, and the secret key into `.env.local`.
 
@@ -40,10 +43,11 @@ The migration creates:
 | Table | Purpose |
 | --- | --- |
 | `krathongs` | one row per released krathong: wish, 3D config, position |
+| `lanterns` | one row per released sky lantern: wish, colour, sky position |
 | `wish_events` | hashed-IP rate limiting ledger |
 
-RLS: `anon` may read live krathongs only. All writes go through the server
-with the service role key.
+RLS: `anon` may read live krathongs and lanterns only. All writes go through
+the server with the service role key.
 
 ## Why the free tier is enough
 
@@ -60,10 +64,11 @@ If traffic grows past that, the next step is Pro ($25/mo), not a redesign.
 ## Cost / limit guardrails
 
 - River returns the newest 200 krathongs (`RIVER.pageSize`)
-- Scene renders at most 120 of them
-- Krathongs expire after 7 days and are hard-deleted 30 days later
-- Rate limit: 5 releases per IP per 10 minutes
-- Reports auto-hide a krathong after 3 reports
+- Sky returns the newest 120 lanterns (`LANTERN.pageSize`)
+- Scene renders at most 120 krathongs
+- Krathongs and lanterns expire after 7 days and are hard-deleted 30 days later
+- Rate limit: 5 releases per IP per 10 minutes (krathongs and lanterns share it)
+- Reports auto-hide a krathong or lantern after 3 reports
 
 ## Scripts
 
@@ -86,10 +91,13 @@ npm run typecheck  # tsc --noEmit
 ```
 src/app/api/krathongs/route.ts        GET river, POST release
 src/app/api/krathongs/[id]/report     report endpoint
+src/app/api/lanterns/route.ts         GET sky, POST lantern release
 src/lib/krathong/geometry.ts          parametric krathong mesh
 src/lib/krathong/schema.ts            zod schema + shared types
 src/lib/krathong/use-river.ts         fetch + realtime + release
+src/lib/lantern/use-lanterns.ts       fetch + realtime + lantern release
 src/components/scene/Scene.tsx        water shader, lights, krathongs
+src/components/LanternForm.tsx        sky lantern release form
 src/components/RiverApp.tsx           page shell and UI state
 supabase/migrations/0001_init.sql     schema, RLS, report RPC, cron
 docs/adr/                             design decisions

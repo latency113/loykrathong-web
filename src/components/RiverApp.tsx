@@ -4,11 +4,16 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
 import ClassicKrathongSvg from "./ClassicKrathongSvg";
 import KrathongForm from "./KrathongForm";
+import LanternForm from "./LanternForm";
+import SkyLanternSvg from "./SkyLanternSvg";
 import { riverAudio } from "@/lib/krathong/audio";
 import { useRiver } from "@/lib/krathong/use-river";
+import { useLanterns } from "@/lib/lantern/use-lanterns";
 import {
+  LANTERN_COLOR_STYLES,
   RIVER_SCENES,
   RIVER_SCENE_LABELS,
+  type LanternReleaseInput,
   type ReleaseInput,
   type RiverScene,
 } from "@/lib/krathong/schema";
@@ -35,17 +40,31 @@ function timeAgo(iso: string): string {
 
 export default function RiverApp() {
   const { krathongs, demo, ready, release, hide, bless } = useRiver();
+  const {
+    lanterns,
+    release: releaseLantern,
+    hide: hideLantern,
+    bless: blessLantern,
+  } = useLanterns();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedLanternId, setSelectedLanternId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const [lanternFormOpen, setLanternFormOpen] = useState(false);
   const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [scene, setScene] = useState<RiverScene>("chao-phraya");
   const [soundOn, setSoundOn] = useState(false);
   const [celebrationKey, setCelebrationKey] = useState(0);
   const [blessedIds, setBlessedIds] = useState<Set<string>>(() => new Set());
+  const [blessedLanternIds, setBlessedLanternIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [toast, setToast] = useState<Toast | null>(null);
   const [reporting, setReporting] = useState(false);
+  const [reportingLantern, setReportingLantern] = useState(false);
 
   const selected = krathongs.find((k) => k.id === selectedId) ?? null;
+  const selectedLantern =
+    lanterns.find((l) => l.id === selectedLanternId) ?? null;
 
   useEffect(() => {
     try {
@@ -55,6 +74,10 @@ export default function RiverApp() {
       const saved = localStorage.getItem("loykrathong-blessed");
       if (saved) {
         setBlessedIds(new Set(JSON.parse(saved) as string[]));
+      }
+      const savedLanterns = localStorage.getItem("loykrathong-blessed-lanterns");
+      if (savedLanterns) {
+        setBlessedLanternIds(new Set(JSON.parse(savedLanterns) as string[]));
       }
     } catch {
       setWelcomeOpen(true);
@@ -118,11 +141,39 @@ export default function RiverApp() {
     [bless, blessedIds],
   );
 
+  const handleBlessLantern = useCallback(
+    (id: string) => {
+      const alreadyBlessed = blessedLanternIds.has(id);
+      const delta: 1 | -1 = alreadyBlessed ? -1 : 1;
+
+      setBlessedLanternIds((prev) => {
+        const next = new Set(prev);
+        if (alreadyBlessed) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+        try {
+          localStorage.setItem(
+            "loykrathong-blessed-lanterns",
+            JSON.stringify(Array.from(next).slice(-100)),
+          );
+        } catch {
+          // ignore
+        }
+        return next;
+      });
+      blessLantern(id, delta);
+    },
+    [blessLantern, blessedLanternIds],
+  );
+
   const handleRelease = useCallback(
     async (input: ReleaseInput) => {
       const result = await release(input);
       if (result.ok) {
         setSelectedId(result.krathong.id);
+        setSelectedLanternId(null);
         setCelebrationKey((k) => k + 1);
         setToast({
           text: result.demo
@@ -138,6 +189,27 @@ export default function RiverApp() {
     [release],
   );
 
+  const handleReleaseLantern = useCallback(
+    async (input: LanternReleaseInput) => {
+      const result = await releaseLantern(input);
+      if (result.ok) {
+        setSelectedLanternId(result.lantern.id);
+        setSelectedId(null);
+        setCelebrationKey((k) => k + 1);
+        setToast({
+          text: result.demo
+            ? "ลอยโคมแล้ว — โหมดตัวอย่าง ยังไม่บันทึกลงฐานข้อมูล"
+            : "ลอยโคมสำเร็จ ขอให้สมปรารถนา",
+          tone: "ok",
+        });
+        return { ok: true as const, demo: result.demo };
+      }
+      setToast({ text: result.error, tone: "error" });
+      return { ok: false as const, error: result.error };
+    },
+    [releaseLantern],
+  );
+
   const report = async (id: string) => {
     setReporting(true);
     if (!id.startsWith("demo-") && !id.startsWith("local-")) {
@@ -149,17 +221,41 @@ export default function RiverApp() {
     setToast({ text: "ขอบคุณที่รายงาน กระทงถูกนำออกจากแม่น้ำ", tone: "ok" });
   };
 
+  const reportLantern = async (id: string) => {
+    setReportingLantern(true);
+    if (!id.startsWith("demo-") && !id.startsWith("local-")) {
+      await fetch(`/api/lanterns/${id}/report`, { method: "POST" }).catch(
+        () => null,
+      );
+    }
+    hideLantern(id);
+    setSelectedLanternId(null);
+    setReportingLantern(false);
+    setToast({ text: "ขอบคุณที่รายงาน โคมถูกนำออกจากท้องฟ้า", tone: "ok" });
+  };
+
   return (
     <main className="relative h-dvh w-full overflow-hidden bg-[#071528]">
       <div className="absolute inset-0 z-0">
         <RiverCanvas
           krathongs={krathongs}
+          lanterns={lanterns}
           selectedId={selectedId}
+          selectedLanternId={selectedLanternId}
           scene={scene}
           celebrationKey={celebrationKey}
           blessedIds={blessedIds}
-          onSelect={setSelectedId}
+          blessedLanternIds={blessedLanternIds}
+          onSelect={(id) => {
+            setSelectedId(id);
+            setSelectedLanternId(null);
+          }}
+          onSelectLantern={(id) => {
+            setSelectedLanternId(id);
+            setSelectedId(null);
+          }}
           onBless={handleBless}
+          onBlessLantern={handleBlessLantern}
         />
       </div>
 
@@ -169,7 +265,7 @@ export default function RiverApp() {
             ลอยกระทงออนไลน์
           </h1>
           <p className="mt-1 max-w-xs text-sm text-slate-300/80">
-            อัปโหลดรูปภาพหรือแต่งกระทง แล้วปล่อยลงแม่น้ำ
+            ปล่อยกระทงลงแม่น้ำ หรือลอยโคมคำอธิษฐานขึ้นฟ้า
           </p>
         </div>
 
@@ -206,7 +302,7 @@ export default function RiverApp() {
           </button>
 
           <span className="whitespace-nowrap rounded-full border border-white/10 bg-black/35 px-3 py-1 text-slate-300 backdrop-blur">
-            {krathongs.length} กระทง
+            {krathongs.length} กระทง · {lanterns.length} โคม
           </span>
 
           {demo && (
@@ -293,17 +389,96 @@ export default function RiverApp() {
         </aside>
       )}
 
+      {selectedLantern && (
+        <aside className="absolute right-4 top-24 z-20 w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-white/10 bg-[#0b1726]/90 p-4 shadow-xl backdrop-blur">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs text-slate-400">โคมของ</p>
+              <p className="text-lg font-semibold text-amber-100">
+                {selectedLantern.nickname}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedLanternId(null)}
+              className="rounded-full p-1.5 text-slate-400 transition hover:bg-white/10 hover:text-white"
+              aria-label="ปิด"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="mt-3 flex h-40 w-full flex-col items-center justify-center rounded-xl border border-white/10 bg-[#081528]">
+            <div className="relative">
+              <div
+                className={`absolute -inset-6 rounded-full blur-xl ${LANTERN_COLOR_STYLES[selectedLantern.color].glow}`}
+              />
+              <SkyLanternSvg
+                color={selectedLantern.color}
+                className="relative h-24 w-20 drop-shadow-[0_0_22px_rgba(251,191,36,0.55)]"
+              />
+            </div>
+            <p className="mt-2 text-[11px] text-slate-500">โคมลอยคำอธิษฐาน</p>
+          </div>
+
+          {selectedLantern.wish ? (
+            <p className="mt-3 text-sm leading-relaxed text-slate-200">
+              “{selectedLantern.wish}”
+            </p>
+          ) : (
+            <p className="mt-3 text-sm italic text-slate-500">ไม่มีคำอธิษฐาน</p>
+          )}
+
+          <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
+            <span>{timeAgo(selectedLantern.createdAt)}</span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleBlessLantern(selectedLantern.id)}
+                className={`rounded-full border px-2.5 py-1 transition ${
+                  blessedLanternIds.has(selectedLantern.id)
+                    ? "border-rose-400/40 bg-rose-500/20 text-rose-200 hover:bg-rose-500/30"
+                    : "border-white/15 bg-white/5 text-slate-300 hover:border-rose-300/40 hover:text-rose-200"
+                }`}
+              >
+                {blessedLanternIds.has(selectedLantern.id)
+                  ? "♥ ส่งใจแล้ว"
+                  : "♥ ส่งใจ"}{" "}
+                ({selectedLantern.blessings})
+              </button>
+              <button
+                type="button"
+                disabled={reportingLantern}
+                onClick={() => void reportLantern(selectedLantern.id)}
+                className="rounded-full px-2 py-1 text-slate-400 transition hover:bg-red-500/10 hover:text-red-300 disabled:opacity-50"
+              >
+                รายงาน
+              </button>
+            </div>
+          </div>
+        </aside>
+      )}
+
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col items-center gap-2.5 pb-4">
         <p className="hidden text-xs text-slate-300/80 sm:block">
-          ลากซ้าย-ขวาเพื่อเลื่อน · สกรอลล์เพื่อซูม · กด ♥ ส่งใจให้กระทง
+          ลากซ้าย-ขวาเพื่อเลื่อน · สกรอลล์เพื่อซูม · กด ♥ ส่งใจ · กดโคมเพื่ออ่านคำอธิษฐาน
         </p>
-        <button
-          type="button"
-          onClick={() => setFormOpen(true)}
-          className="pointer-events-auto rounded-full bg-gradient-to-r from-amber-300 to-orange-400 px-8 py-3.5 text-base font-semibold text-[#2a1606] shadow-lg shadow-orange-500/25 transition hover:brightness-110 active:scale-95"
-        >
-          ปล่อยกระทง
-        </button>
+        <div className="pointer-events-auto flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setFormOpen(true)}
+            className="rounded-full bg-gradient-to-r from-amber-300 to-orange-400 px-7 py-3.5 text-base font-semibold text-[#2a1606] shadow-lg shadow-orange-500/25 transition hover:brightness-110 active:scale-95"
+          >
+            ปล่อยกระทง
+          </button>
+          <button
+            type="button"
+            onClick={() => setLanternFormOpen(true)}
+            className="rounded-full border border-amber-200/40 bg-black/45 px-6 py-3.5 text-base font-semibold text-amber-100 shadow-lg backdrop-blur transition hover:bg-black/65 active:scale-95"
+          >
+            ลอยโคม
+          </button>
+        </div>
         <p className="text-[11px] text-slate-400/75">
           Made by <span className="font-medium text-amber-200/85">khan.nn03</span>
         </p>
@@ -319,7 +494,8 @@ export default function RiverApp() {
               ยินดีต้อนรับสู่ลอยกระทงออนไลน์
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-slate-300">
-              ร่วมลอยกระทงด้วยรูปภาพของคุณเอง หรือเลือกกระทงแบบปกติ เขียนคำอธิษฐาน แล้วปล่อยลอยลงแม่น้ำใต้แสงจันทร์
+              ร่วมลอยกระทงด้วยรูปภาพของคุณเอง หรือเลือกกระทงแบบปกติ เขียนคำอธิษฐาน
+              แล้วปล่อยลอยลงแม่น้ำใต้แสงจันทร์ หรือลอยโคมคำอธิษฐานขึ้นสู่ท้องฟ้า
             </p>
             <p className="mt-2 rounded-xl border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100/90">
               คำเตือน: ห้ามลงรูปอนาจาร ความรุนแรง โฆษณาเว็บพนัน หรือเนื้อหาผิดกฎหมาย
@@ -346,6 +522,13 @@ export default function RiverApp() {
 
       {formOpen && (
         <KrathongForm onRelease={handleRelease} onClose={() => setFormOpen(false)} />
+      )}
+
+      {lanternFormOpen && (
+        <LanternForm
+          onRelease={handleReleaseLantern}
+          onClose={() => setLanternFormOpen(false)}
+        />
       )}
 
       {toast && (
