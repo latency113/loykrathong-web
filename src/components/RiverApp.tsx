@@ -259,25 +259,44 @@ export default function RiverApp() {
         />
       </div>
 
-      <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-wrap items-start justify-between gap-3 p-4 sm:p-5">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-amber-100 drop-shadow-lg sm:text-3xl">
-            ลอยกระทงออนไลน์
-          </h1>
-          <p className="mt-1 max-w-xs text-sm text-slate-300/80">
-            ปล่อยกระทงลงแม่น้ำ หรือลอยโคมคำอธิษฐานขึ้นฟ้า
-          </p>
+      <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col gap-2 p-3 sm:flex-row sm:items-start sm:justify-between sm:gap-3 sm:p-5">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight text-amber-100 drop-shadow-lg sm:text-3xl">
+              ลอยกระทงออนไลน์
+            </h1>
+            <p className="mt-1 hidden max-w-xs text-sm text-slate-300/80 sm:block">
+              ปล่อยกระทงลงแม่น้ำ หรือลอยโคมคำอธิษฐานขึ้นฟ้า
+            </p>
+          </div>
+          <div className="pointer-events-auto flex items-center gap-1.5 sm:hidden">
+            <button
+              type="button"
+              onClick={toggleSound}
+              aria-label={soundOn ? "ปิดเสียงบรรยากาศ" : "เปิดเสียงบรรยากาศ"}
+              className={`rounded-full border px-2.5 py-1 text-xs backdrop-blur transition ${
+                soundOn
+                  ? "border-amber-300/45 bg-amber-300/20 text-amber-100"
+                  : "border-white/10 bg-black/35 text-slate-300"
+              }`}
+            >
+              {soundOn ? "🔊" : "🔇"}
+            </button>
+            <span className="whitespace-nowrap rounded-full border border-white/10 bg-black/35 px-2.5 py-1 text-[11px] text-slate-300 backdrop-blur">
+              {krathongs.length} กระทง · {lanterns.length} โคม
+            </span>
+          </div>
         </div>
 
-        <div className="pointer-events-auto flex flex-wrap items-center justify-end gap-2 text-xs">
+        <div className="pointer-events-auto flex flex-wrap items-center justify-start gap-1.5 text-xs sm:justify-end sm:gap-2">
           {/* Scene switcher */}
-          <div className="flex items-center gap-1 rounded-full border border-white/10 bg-black/35 p-1 backdrop-blur">
+          <div className="flex items-center gap-0.5 rounded-full border border-white/10 bg-black/35 p-0.5 backdrop-blur sm:gap-1 sm:p-1">
             {RIVER_SCENES.map((item) => (
               <button
                 key={item}
                 type="button"
                 onClick={() => setScene(item)}
-                className={`rounded-full px-2.5 py-1 text-[11px] transition ${
+                className={`rounded-full px-2 py-0.5 text-[10px] transition sm:px-2.5 sm:py-1 sm:text-[11px] ${
                   scene === item
                     ? "bg-amber-300/25 text-amber-100"
                     : "text-slate-300 hover:text-white"
@@ -292,7 +311,7 @@ export default function RiverApp() {
             type="button"
             onClick={toggleSound}
             aria-label={soundOn ? "ปิดเสียงบรรยากาศ" : "เปิดเสียงบรรยากาศ"}
-            className={`rounded-full border px-3 py-1 backdrop-blur transition ${
+            className={`hidden rounded-full border px-3 py-1 backdrop-blur transition sm:inline-flex ${
               soundOn
                 ? "border-amber-300/45 bg-amber-300/20 text-amber-100"
                 : "border-white/10 bg-black/35 text-slate-300 hover:bg-black/55"
@@ -301,12 +320,12 @@ export default function RiverApp() {
             {soundOn ? "🔊 เสียงเปิด" : "🔇 เสียงปิด"}
           </button>
 
-          <span className="whitespace-nowrap rounded-full border border-white/10 bg-black/35 px-3 py-1 text-slate-300 backdrop-blur">
+          <span className="hidden whitespace-nowrap rounded-full border border-white/10 bg-black/35 px-3 py-1 text-slate-300 backdrop-blur sm:inline-flex">
             {krathongs.length} กระทง · {lanterns.length} โคม
           </span>
 
           {demo && (
-            <span className="rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1 text-amber-200/90">
+            <span className="rounded-full border border-amber-300/30 bg-amber-300/10 px-2.5 py-0.5 text-[11px] text-amber-200/90 sm:px-3 sm:py-1 sm:text-xs">
               โหมดตัวอย่าง
             </span>
           )}
@@ -459,7 +478,7 @@ export default function RiverApp() {
         </aside>
       )}
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col items-center gap-2.5 pb-4">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col items-center gap-2 pb-3 sm:gap-2.5 sm:pb-4">
         <p className="hidden text-xs text-slate-300/80 sm:block">
           ลากซ้าย-ขวาเพื่อเลื่อน · สกรอลล์เพื่อซูม · กด ♥ ส่งใจ · กดโคมเพื่ออ่านคำอธิษฐาน
         </p>
@@ -467,14 +486,14 @@ export default function RiverApp() {
           <button
             type="button"
             onClick={() => setFormOpen(true)}
-            className="rounded-full bg-gradient-to-r from-amber-300 to-orange-400 px-7 py-3.5 text-base font-semibold text-[#2a1606] shadow-lg shadow-orange-500/25 transition hover:brightness-110 active:scale-95"
+            className="rounded-full bg-gradient-to-r from-amber-300 to-orange-400 px-5 py-2.5 text-sm font-semibold text-[#2a1606] shadow-lg shadow-orange-500/25 transition hover:brightness-110 active:scale-95 sm:px-7 sm:py-3.5 sm:text-base"
           >
             ปล่อยกระทง
           </button>
           <button
             type="button"
             onClick={() => setLanternFormOpen(true)}
-            className="rounded-full border border-amber-200/40 bg-black/45 px-6 py-3.5 text-base font-semibold text-amber-100 shadow-lg backdrop-blur transition hover:bg-black/65 active:scale-95"
+            className="rounded-full border border-amber-200/40 bg-black/45 px-5 py-2.5 text-sm font-semibold text-amber-100 shadow-lg backdrop-blur transition hover:bg-black/65 active:scale-95 sm:px-6 sm:py-3.5 sm:text-base"
           >
             ลอยโคม
           </button>

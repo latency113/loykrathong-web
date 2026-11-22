@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import ClassicKrathongSvg, { PhotoKrathongFrame } from "./ClassicKrathongSvg";
+import HorizonBackdrop from "./HorizonBackdrop";
 import PixiRiverBackground from "./PixiRiverBackground";
 import SkyLanternSvg from "./SkyLanternSvg";
 import {
@@ -96,8 +97,8 @@ function mapToViewport(k: Krathong, index: number) {
 
 function mapLantern(lantern: Lantern, index: number) {
   const leftPct = 50 + lantern.x * 42;
-  // Relative to the 35%-tall sky layer, so the lantern sits at ~10-28% viewport.
-  const topPct = 28 + lantern.y * 52;
+  // Relative to the 35%-tall sky layer; keep below top header on mobile.
+  const topPct = 44 + lantern.y * 42;
   const scale = 0.82 + lantern.y * 0.22;
   const durationSec = 9 + (index % 6) * 1.6;
   const delaySec = -((index * 2.3) % 10);
@@ -287,34 +288,20 @@ export default function RiverCanvas({
           </div>
         </div>
 
-        {/* Distant silhouette */}
-        <svg
-          viewBox="0 0 1440 110"
-          preserveAspectRatio="none"
-          className="absolute inset-x-0 bottom-0 h-12 w-full sm:h-16"
+        {/* Scene-specific skyline: fixed on desktop, parallax-follows panX on mobile */}
+        <div
+          style={
+            {
+              "--horizon-pan": `${panX * 0.42}px`,
+              transition: dragging
+                ? "none"
+                : "transform 280ms cubic-bezier(0.22, 1, 0.36, 1)",
+            } as React.CSSProperties
+          }
+          className="horizon-parallax pointer-events-none absolute inset-x-0 bottom-0 h-full"
         >
-          <path
-            d="M0,110 L0,62 Q160,38 340,58 T720,52 T1080,60 T1440,56 L1440,110 Z"
-            fill="#0d1338"
-            opacity="0.9"
-          />
-          {scene === "chao-phraya" && (
-            <>
-              <path
-                d="M170,110 L170,74 L182,74 L188,48 L194,28 L200,48 L206,74 L218,74 L218,110 Z"
-                fill="#070b24"
-              />
-              <path
-                d="M228,110 L228,82 L242,66 L256,82 L256,110 Z"
-                fill="#070b24"
-              />
-            </>
-          )}
-          <path
-            d="M0,110 L0,78 Q220,62 460,76 T940,72 T1440,74 L1440,110 Z"
-            fill="#070c26"
-          />
-        </svg>
+          <HorizonBackdrop scene={scene} />
+        </div>
 
         <div className="absolute inset-x-0 bottom-0 h-3 bg-gradient-to-t from-[#0d2a56]/90 to-transparent" />
       </div>
@@ -500,7 +487,7 @@ export default function RiverCanvas({
         }}
         disabled={panX >= MAX_PAN_PX}
         aria-label="เลื่อนดูฝั่งซ้าย"
-        className="absolute left-3 top-1/2 z-20 -translate-y-1/2 rounded-full border border-amber-200/20 bg-black/35 px-3 py-2 text-lg text-amber-100 backdrop-blur transition hover:bg-black/55 disabled:opacity-25"
+        className="absolute left-2 top-1/2 z-20 -translate-y-1/2 rounded-full border border-amber-200/20 bg-black/35 px-2.5 py-1.5 text-base text-amber-100 backdrop-blur transition hover:bg-black/55 disabled:opacity-25 sm:left-3 sm:px-3 sm:py-2 sm:text-lg"
       >
         ‹
       </button>
@@ -512,7 +499,7 @@ export default function RiverCanvas({
         }}
         disabled={panX <= -MAX_PAN_PX}
         aria-label="เลื่อนดูฝั่งขวา"
-        className="absolute right-3 top-1/2 z-20 -translate-y-1/2 rounded-full border border-amber-200/20 bg-black/35 px-3 py-2 text-lg text-amber-100 backdrop-blur transition hover:bg-black/55 disabled:opacity-25"
+        className="absolute right-2 top-1/2 z-20 -translate-y-1/2 rounded-full border border-amber-200/20 bg-black/35 px-2.5 py-1.5 text-base text-amber-100 backdrop-blur transition hover:bg-black/55 disabled:opacity-25 sm:right-3 sm:px-3 sm:py-2 sm:text-lg"
       >
         ›
       </button>
@@ -520,7 +507,7 @@ export default function RiverCanvas({
       {/* Zoom controls */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="absolute bottom-6 right-4 z-20 flex items-center gap-1 rounded-full border border-amber-200/20 bg-black/40 p-1 text-xs text-amber-100 backdrop-blur"
+        className="absolute bottom-24 right-3 z-20 flex items-center gap-0.5 rounded-full border border-amber-200/20 bg-black/45 p-1 text-xs text-amber-100 backdrop-blur sm:bottom-6 sm:right-4 sm:gap-1"
       >
         <button
           type="button"
@@ -554,6 +541,14 @@ export default function RiverCanvas({
       </div>
 
       <style jsx>{`
+        @media (max-width: 639px) {
+          .horizon-parallax {
+            left: 50%;
+            right: auto;
+            width: 1440px;
+            transform: translate3d(calc(-50% + var(--horizon-pan, 0px)), 0, 0);
+          }
+        }
         @keyframes float-drift {
           0%,
           100% {
