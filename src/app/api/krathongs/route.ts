@@ -59,39 +59,10 @@ function extForMime(mime: string): string {
   return "webp";
 }
 
-async function pickPosition(
-  db: ReturnType<typeof adminClient>,
-): Promise<{ x: number; z: number }> {
-  const { data } = await db
-    .from("krathongs")
-    .select("position_x,position_z")
-    .is("hidden_at", null)
-    .order("created_at", { ascending: false })
-    .limit(40);
-
-  const taken = (data ?? []) as { position_x: number; position_z: number }[];
-  let best = { x: 0, z: -5 };
-  let bestGap = -1;
-
-  for (let attempt = 0; attempt < 36; attempt += 1) {
-    const x = (Math.random() * 2 - 1) * (RIVER.halfWidth - 1);
-    const z = -26 + Math.random() * 32;
-    const gap =
-      taken.length === 0
-        ? Number.POSITIVE_INFINITY
-        : Math.min(
-            ...taken.map((p) => Math.hypot(p.position_x - x, p.position_z - z)),
-          );
-    if (gap > bestGap) {
-      bestGap = gap;
-      best = { x, z };
-    }
-    if (gap > 9) break;
-  }
-
+function pickPosition(): { x: number; z: number } {
   return {
-    x: Number(best.x.toFixed(2)),
-    z: Number(best.z.toFixed(2)),
+    x: Number(((Math.random() * 2 - 1) * (RIVER.halfWidth - 1)).toFixed(2)),
+    z: Number((-26 + Math.random() * 32).toFixed(2)),
   };
 }
 
@@ -295,7 +266,7 @@ export async function POST(request: Request) {
     imageUrl = urlData.publicUrl;
   }
 
-  const { x, z } = await pickPosition(db);
+  const { x, z } = pickPosition();
 
   const { data, error } = await db
     .from("krathongs")

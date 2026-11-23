@@ -48,40 +48,11 @@ function hashIp(ip: string): string {
   return createHash("sha256").update(`${salt}:${ip}`).digest("hex");
 }
 
-/** Spread new lanterns across the sky instead of stacking them. */
-async function pickSkyPosition(
-  db: ReturnType<typeof adminClient>,
-): Promise<{ x: number; y: number }> {
-  const { data } = await db
-    .from("lanterns")
-    .select("position_x,position_y")
-    .is("hidden_at", null)
-    .order("created_at", { ascending: false })
-    .limit(40);
-
-  const taken = (data ?? []) as { position_x: number; position_y: number }[];
-  let best = { x: 0, y: 0.5 };
-  let bestGap = -1;
-
-  for (let attempt = 0; attempt < 36; attempt += 1) {
-    const x = (Math.random() * 2 - 1) * 0.92;
-    const y = 0.08 + Math.random() * 0.8;
-    const gap =
-      taken.length === 0
-        ? Number.POSITIVE_INFINITY
-        : Math.min(
-            ...taken.map((p) => Math.hypot(p.position_x - x, p.position_y - y)),
-          );
-    if (gap > bestGap) {
-      bestGap = gap;
-      best = { x, y };
-    }
-    if (gap > 0.38) break;
-  }
-
+/** Place each new lantern at a pure random point in the sky. */
+function pickSkyPosition(): { x: number; y: number } {
   return {
-    x: Number(best.x.toFixed(3)),
-    y: Number(best.y.toFixed(3)),
+    x: Number(((Math.random() * 2 - 1) * 0.92).toFixed(3)),
+    y: Number((0.08 + Math.random() * 0.8).toFixed(3)),
   };
 }
 
@@ -174,7 +145,7 @@ export async function POST(request: Request) {
 
   await db.from("wish_events").insert({ ip_hash: ipHash });
 
-  const { x, y } = await pickSkyPosition(db);
+  const { x, y } = pickSkyPosition();
 
   const { data, error } = await db
     .from("lanterns")
