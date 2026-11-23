@@ -73,9 +73,9 @@ async function pickPosition(
   let best = { x: 0, z: -5 };
   let bestGap = -1;
 
-  for (let attempt = 0; attempt < 16; attempt += 1) {
-    const x = (Math.random() * 2 - 1) * 8;
-    const z = -2 - Math.random() * 8;
+  for (let attempt = 0; attempt < 36; attempt += 1) {
+    const x = (Math.random() * 2 - 1) * (RIVER.halfWidth - 1);
+    const z = -26 + Math.random() * 32;
     const gap =
       taken.length === 0
         ? Number.POSITIVE_INFINITY
@@ -86,7 +86,7 @@ async function pickPosition(
       bestGap = gap;
       best = { x, z };
     }
-    if (gap > 4) break;
+    if (gap > 9) break;
   }
 
   return {

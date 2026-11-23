@@ -129,8 +129,8 @@ export function useLanterns() {
             wish: input.wish,
             color: input.color,
             blessings: 0,
-            x: (Math.random() * 2 - 1) * 0.6,
-            y: 0.2 + Math.random() * 0.55,
+            x: Number(((Math.random() * 2 - 1) * 0.92).toFixed(3)),
+            y: Number((0.08 + Math.random() * 0.8).toFixed(3)),
             createdAt: new Date().toISOString(),
           };
           add([local]);

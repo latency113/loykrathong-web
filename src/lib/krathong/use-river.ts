@@ -141,8 +141,8 @@ export function useRiver() {
             imageUrl: input.mode === "image" ? input.previewUrl : null,
             config: input.mode === "classic" ? input.config : null,
             blessings: 0,
-            x: (Math.random() * 2 - 1) * 6,
-            z: -2 - Math.random() * 6,
+            x: Number(((Math.random() * 2 - 1) * (RIVER.halfWidth - 1)).toFixed(2)),
+            z: Number((-26 + Math.random() * 32).toFixed(2)),
             createdAt: new Date().toISOString(),
           };
           add([local]);

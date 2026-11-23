@@ -63,9 +63,9 @@ async function pickSkyPosition(
   let best = { x: 0, y: 0.5 };
   let bestGap = -1;
 
-  for (let attempt = 0; attempt < 16; attempt += 1) {
-    const x = (Math.random() * 2 - 1) * 0.82;
-    const y = 0.12 + Math.random() * 0.72;
+  for (let attempt = 0; attempt < 36; attempt += 1) {
+    const x = (Math.random() * 2 - 1) * 0.92;
+    const y = 0.08 + Math.random() * 0.8;
     const gap =
       taken.length === 0
         ? Number.POSITIVE_INFINITY
@@ -76,7 +76,7 @@ async function pickSkyPosition(
       bestGap = gap;
       best = { x, y };
     }
-    if (gap > 0.18) break;
+    if (gap > 0.38) break;
   }
 
   return {
