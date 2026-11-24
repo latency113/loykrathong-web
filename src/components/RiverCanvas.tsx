@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 import ClassicKrathongSvg, { PhotoKrathongFrame } from "./ClassicKrathongSvg";
 import HorizonBackdrop from "./HorizonBackdrop";
 import PixiRiverBackground from "./PixiRiverBackground";
@@ -70,40 +70,291 @@ const SCENE_THEME: Record<
   },
 };
 
-const MAX_PAN_PX = 900;
 const MIN_ZOOM = 0.65;
 const MAX_ZOOM = 1.85;
 
-function clampPan(value: number) {
-  return Math.max(-MAX_PAN_PX, Math.min(MAX_PAN_PX, value));
+function clampPan(value: number, maxPan: number) {
+  return Math.max(-maxPan, Math.min(maxPan, value));
 }
 
 function clampZoom(value: number) {
   return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Number(value.toFixed(3))));
 }
 
-function mapToViewport(k: Krathong, index: number) {
-  const offsetX = (k.x / RIVER.halfWidth) * 950;
-  const depthNorm = Math.min(
-    1,
-    Math.max(0, (k.z - RIVER.minZ) / (RIVER.maxZ - RIVER.minZ)),
-  );
-  const topPct = 36 + depthNorm * 46;
-  const scale = 0.72 + depthNorm * 0.38;
-  const durationSec = 14 + (index % 7) * 2.5;
-  const delaySec = -((index * 1.7) % 12);
-  return { offsetX, topPct, scale, durationSec, delaySec };
+function layoutKrathongs(krathongs: Krathong[], spreadX: number): PositionedKrathong[] {
+  const items = krathongs.map((k, index) => {
+    const offsetX = (k.x / RIVER.halfWidth) * spreadX;
+    const depthNorm = Math.min(
+      1,
+      Math.max(0, (k.z - RIVER.minZ) / (RIVER.maxZ - RIVER.minZ)),
+    );
+    const topPct = 39 + depthNorm * 43;
+    const scale = 0.74 + depthNorm * 0.34;
+    const durationSec = 14 + (index % 7) * 2.5;
+    const delaySec = -((index * 1.7) % 12);
+    return { k, offsetX, topPct, scale, durationSec, delaySec };
+  });
+
+  // Gentle 2D repulsion so dense clusters spread out without overlapping wishes.
+  const minDx = 175;
+  const minDy = 13; // % of viewport height
+  for (let pass = 0; pass < 16; pass += 1) {
+    for (let i = 0; i < items.length; i += 1) {
+      for (let j = i + 1; j < items.length; j += 1) {
+        const a = items[i];
+        const b = items[j];
+        const dx = b.offsetX - a.offsetX;
+        const dy = b.topPct - a.topPct;
+        const nx = dx / minDx;
+        const ny = dy / minDy;
+        const distSq = nx * nx + ny * ny;
+        if (distSq < 1) {
+          const dist = Math.sqrt(distSq) || 0.01;
+          const push = (1 - dist) * 0.5;
+          const ux = (dx === 0 && dy === 0 ? (i % 2 === 0 ? 1 : -1) : nx / dist) * push;
+          const uy = (dy === 0 ? 0.3 : ny / dist) * push;
+          a.offsetX = Math.max(-spreadX, Math.min(spreadX, a.offsetX - ux * minDx));
+          b.offsetX = Math.max(-spreadX, Math.min(spreadX, b.offsetX + ux * minDx));
+          a.topPct = Math.max(39, Math.min(82, a.topPct - uy * minDy));
+          b.topPct = Math.max(39, Math.min(82, b.topPct + uy * minDy));
+        }
+      }
+    }
+  }
+
+  return items;
 }
 
-function mapLantern(lantern: Lantern, index: number) {
-  const leftPct = 50 + lantern.x * 42;
-  // Relative to the 35%-tall sky layer; keep below top header on mobile.
-  const topPct = 44 + lantern.y * 42;
-  const scale = 0.82 + lantern.y * 0.22;
-  const durationSec = 9 + (index % 6) * 1.6;
-  const delaySec = -((index * 2.3) % 10);
-  return { leftPct, topPct, scale, durationSec, delaySec };
+function layoutLanterns(lanterns: Lantern[], spreadX: number): PositionedLantern[] {
+  const items = lanterns.map((l, index) => {
+    const offsetX = l.x * spreadX;
+    const topPct = 36 + l.y * 50;
+    const scale = 0.82 + l.y * 0.22;
+    const durationSec = 9 + (index % 6) * 1.6;
+    const delaySec = -((index * 2.3) % 10);
+    return { l, offsetX, topPct, scale, durationSec, delaySec };
+  });
+
+  const minDx = 125; // px horizontal clearance
+  const minDy = 24; // % of sky height
+  for (let pass = 0; pass < 16; pass += 1) {
+    for (let i = 0; i < items.length; i += 1) {
+      for (let j = i + 1; j < items.length; j += 1) {
+        const a = items[i];
+        const b = items[j];
+        const dx = b.offsetX - a.offsetX;
+        const dy = b.topPct - a.topPct;
+        const nx = dx / minDx;
+        const ny = dy / minDy;
+        const distSq = nx * nx + ny * ny;
+        if (distSq < 1) {
+          const dist = Math.sqrt(distSq) || 0.01;
+          const push = (1 - dist) * 0.5;
+          const ux = (dx === 0 && dy === 0 ? (i % 2 === 0 ? 1 : -1) : nx / dist) * push;
+          const uy = (dy === 0 ? 0.3 : ny / dist) * push;
+          a.offsetX = Math.max(-spreadX, Math.min(spreadX, a.offsetX - ux * minDx));
+          b.offsetX = Math.max(-spreadX, Math.min(spreadX, b.offsetX + ux * minDx));
+          a.topPct = Math.max(32, Math.min(86, a.topPct - uy * minDy));
+          b.topPct = Math.max(32, Math.min(86, b.topPct + uy * minDy));
+        }
+      }
+    }
+  }
+
+  return items;
 }
+
+type PositionedKrathong = {
+  k: Krathong;
+  offsetX: number;
+  topPct: number;
+  scale: number;
+  durationSec: number;
+  delaySec: number;
+};
+
+type PositionedLantern = {
+  l: Lantern;
+  offsetX: number;
+  topPct: number;
+  scale: number;
+  durationSec: number;
+  delaySec: number;
+};
+
+const KrathongItem = memo(function KrathongItem({
+  item,
+  isSelected,
+  isBlessed,
+  onSelect,
+  onBless,
+  wasDragged,
+}: {
+  item: PositionedKrathong;
+  isSelected: boolean;
+  isBlessed: boolean;
+  onSelect: (id: string) => void;
+  onBless: (id: string) => void;
+  wasDragged: () => boolean;
+}) {
+  const { k, offsetX, topPct, scale, durationSec, delaySec } = item;
+  return (
+    <div
+      style={{
+        left: `calc(50% + ${offsetX}px)`,
+        top: `${topPct}%`,
+        transform: `translate(-50%, -50%) scale(${isSelected ? scale * 1.14 : scale})`,
+        contain: "layout style",
+      }}
+      className={`group absolute flex flex-col items-center transition-transform duration-300 ${
+        isSelected ? "z-20" : "z-10 hover:z-20"
+      }`}
+    >
+      <div
+        style={{
+          animation: `float-drift ${durationSec}s ease-in-out ${delaySec}s infinite`,
+          willChange: "transform",
+        }}
+        className="flex flex-col items-center"
+      >
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!wasDragged()) onSelect(k.id);
+          }}
+          className="relative flex flex-col items-center focus:outline-none"
+        >
+          <span
+            className="pointer-events-none absolute top-2 h-20 w-20 rounded-full opacity-75 transition group-hover:opacity-100"
+            style={{
+              background:
+                "radial-gradient(circle, rgba(252,211,77,0.28) 0%, rgba(252,211,77,0) 70%)",
+            }}
+          />
+
+          {k.imageUrl ? (
+            <PhotoKrathongFrame
+              imageUrl={k.imageUrl}
+              alt={`กระทงของ ${k.nickname}`}
+              className={`h-24 w-24 transition-transform sm:h-28 sm:w-28 ${
+                isSelected ? "scale-105" : "group-hover:scale-105"
+              }`}
+            />
+          ) : k.config ? (
+            <div
+              className={`relative h-24 w-24 transition-transform sm:h-28 sm:w-28 ${
+                isSelected ? "scale-105" : "group-hover:scale-105"
+              }`}
+            >
+              <ClassicKrathongSvg config={k.config} />
+            </div>
+          ) : (
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-amber-200/45 bg-emerald-950/80 text-xs text-amber-200 shadow-lg sm:h-20 sm:w-20">
+              กระทง
+            </div>
+          )}
+        </button>
+
+        <div className="mt-0.5 flex items-center gap-1">
+          <span className="max-w-[96px] truncate rounded-full border border-amber-200/20 bg-[#071226]/90 px-2.5 py-0.5 text-[11px] font-medium text-amber-100">
+            {k.nickname}
+          </span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!wasDragged()) onBless(k.id);
+            }}
+            aria-label={isBlessed ? "ยกเลิกส่งใจ" : "ส่งใจอวยพร"}
+            className={`rounded-full border px-2 py-0.5 text-[10px] transition ${
+              isBlessed
+                ? "border-rose-400/50 bg-rose-950/90 text-rose-200"
+                : "border-white/15 bg-[#071226]/90 text-slate-200 hover:border-rose-300/50 hover:text-rose-200"
+            }`}
+          >
+            ♥ {k.blessings}
+          </button>
+        </div>
+
+        {k.wish && (
+          <span className="mt-1 max-w-[155px] line-clamp-2 rounded-xl border border-amber-200/15 bg-[#0c1733]/92 px-2.5 py-1 text-center text-[11px] leading-snug text-amber-50/95 shadow-md">
+            “{k.wish}”
+          </span>
+        )}
+      </div>
+    </div>
+  );
+});
+
+const LanternItem = memo(function LanternItem({
+  item,
+  isSelected,
+  isBlessed,
+  onSelect,
+  wasDragged,
+}: {
+  item: PositionedLantern;
+  isSelected: boolean;
+  isBlessed: boolean;
+  onSelect: (id: string) => void;
+  wasDragged: () => boolean;
+}) {
+  const { l, offsetX, topPct, scale, durationSec, delaySec } = item;
+  const lanternStyle = LANTERN_COLOR_STYLES[l.color];
+  return (
+    <div
+      style={{
+        left: `calc(50% + ${offsetX}px)`,
+        top: `${topPct}%`,
+        transform: `translate(-50%, -50%) scale(${isSelected ? scale * 1.22 : scale})`,
+        contain: "layout style",
+      }}
+      className={`group absolute ${isSelected ? "z-20" : "z-10 hover:z-20"}`}
+    >
+      <div
+        style={{
+          animation: `lantern-drift ${durationSec}s ease-in-out ${delaySec}s infinite`,
+          willChange: "transform",
+        }}
+      >
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!wasDragged()) onSelect(l.id);
+          }}
+          className="pointer-events-auto relative flex flex-col items-center focus:outline-none"
+          aria-label={`โคมของ ${l.nickname}`}
+        >
+          <SkyLanternSvg
+            color={l.color}
+            className="relative h-12 w-10 transition-transform group-hover:scale-110"
+          />
+          <span
+            className={`mt-1 max-w-[96px] truncate rounded-full border bg-[#071226]/90 px-2 py-0.5 text-[10px] font-medium text-amber-50 ${lanternStyle.border}`}
+          >
+            {l.nickname}
+          </span>
+          <span
+            className={`mt-0.5 rounded-full border px-1.5 text-[9px] ${
+              isBlessed
+                ? "border-rose-400/50 bg-rose-950/90 text-rose-200"
+                : "border-white/10 bg-[#071226]/90 text-slate-300"
+            }`}
+          >
+            ♥ {l.blessings}
+          </span>
+          {l.wish && (
+            <span className="pointer-events-none absolute top-full mt-1 hidden w-max max-w-[200px] rounded-xl border border-amber-200/20 bg-[#0e1938]/95 px-3 py-1.5 text-center text-[11px] leading-snug text-amber-50/95 shadow-md group-hover:block">
+              “{l.wish}”
+            </span>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+});
 
 export default function RiverCanvas({
   krathongs,
@@ -139,15 +390,21 @@ export default function RiverCanvas({
   const pointersRef = useRef(new Map<number, { x: number; y: number }>());
   const pinchRef = useRef<{ dist: number; zoom: number } | null>(null);
 
+  const spreadX = Math.max(1200, krathongs.length * 46);
+  const skySpreadX = Math.max(760, lanterns.length * 85);
+  const maxPan = Math.max(spreadX, skySpreadX);
+
   const positioned = useMemo(
-    () => krathongs.map((k, idx) => ({ k, ...mapToViewport(k, idx) })),
-    [krathongs],
+    () => layoutKrathongs(krathongs, spreadX),
+    [krathongs, spreadX],
   );
 
   const positionedLanterns = useMemo(
-    () => lanterns.map((l, idx) => ({ l, ...mapLantern(l, idx) })),
-    [lanterns],
+    () => layoutLanterns(lanterns, skySpreadX),
+    [lanterns, skySpreadX],
   );
+
+  const wasDragged = useCallback(() => dragRef.current.moved, []);
 
   const theme = SCENE_THEME[scene];
   const visibleLanterns =
@@ -199,7 +456,7 @@ export default function RiverCanvas({
     if (!dragRef.current.active) return;
     const dx = e.clientX - dragRef.current.startX;
     if (Math.abs(dx) > 6) dragRef.current.moved = true;
-    setPanX(clampPan(dragRef.current.startPan + dx));
+    setPanX(clampPan(dragRef.current.startPan + dx, maxPan));
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -213,7 +470,7 @@ export default function RiverCanvas({
 
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
-      setPanX((prev) => clampPan(prev - e.deltaX));
+      setPanX((prev) => clampPan(prev - e.deltaX, maxPan));
     } else if (e.deltaY !== 0) {
       setZoom((prev) => clampZoom(prev - e.deltaY * 0.0012));
     }
@@ -262,15 +519,17 @@ export default function RiverCanvas({
               left: lantern.left,
               top: lantern.top,
               transform: `scale(${lantern.scale})`,
-              animation: `lantern-rise ${lantern.duration} ease-in-out ${lantern.delay} infinite`,
             }}
             className="absolute"
           >
-            <div className="absolute -inset-2 rounded-full bg-amber-400/20 blur-md" />
-            <SkyLanternSvg
-              color="amber"
-              className="relative h-9 w-7 drop-shadow-[0_0_12px_rgba(251,191,36,0.6)]"
-            />
+            <div
+              style={{
+                animation: `lantern-rise ${lantern.duration} ease-in-out ${lantern.delay} infinite`,
+                willChange: "transform",
+              }}
+            >
+              <SkyLanternSvg color="amber" className="relative h-9 w-7" />
+            </div>
           </div>
         ))}
 
@@ -324,158 +583,38 @@ export default function RiverCanvas({
         }}
         className="relative z-10 h-full w-full"
       >
-        {positioned.map(({ k, offsetX, topPct, scale, durationSec, delaySec }) => {
-          const isSelected = k.id === selectedId;
-          const isBlessed = blessedIds.has(k.id);
-          return (
-            <div
-              key={k.id}
-              style={{
-                left: `calc(50% + ${offsetX}px)`,
-                top: `${topPct}%`,
-                transform: `translate(-50%, -50%) scale(${isSelected ? scale * 1.14 : scale})`,
-                animation: `float-drift ${durationSec}s ease-in-out ${delaySec}s infinite`,
-              }}
-              className={`group absolute flex flex-col items-center transition-transform duration-300 ${
-                isSelected ? "z-20" : "z-10 hover:z-20"
-              }`}
-            >
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (!dragRef.current.moved) onSelect(k.id);
-                }}
-                className="relative flex flex-col items-center focus:outline-none"
-              >
-                <span className="pointer-events-none absolute top-3 h-20 w-20 rounded-full bg-amber-300/20 blur-xl transition group-hover:bg-amber-300/35" />
-
-                {k.imageUrl ? (
-                  <PhotoKrathongFrame
-                    imageUrl={k.imageUrl}
-                    alt={`กระทงของ ${k.nickname}`}
-                    className={`h-24 w-24 transition sm:h-28 sm:w-28 ${
-                      isSelected
-                        ? "drop-shadow-[0_0_20px_rgba(252,211,77,0.75)]"
-                        : "group-hover:drop-shadow-[0_0_16px_rgba(253,230,138,0.55)]"
-                    }`}
-                  />
-                ) : k.config ? (
-                  <div
-                    className={`relative h-24 w-24 transition sm:h-28 sm:w-28 ${
-                      isSelected
-                        ? "drop-shadow-[0_0_20px_rgba(252,211,77,0.75)]"
-                        : "drop-shadow-[0_10px_18px_rgba(0,0,0,0.55)] group-hover:drop-shadow-[0_0_16px_rgba(253,230,138,0.55)]"
-                    }`}
-                  >
-                    <ClassicKrathongSvg config={k.config} />
-                  </div>
-                ) : (
-                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-amber-200/45 bg-emerald-950/60 text-xs text-amber-200 shadow-lg sm:h-20 sm:w-20">
-                    กระทง
-                  </div>
-                )}
-
-                <span className="mt-1 h-1.5 w-16 rounded-full bg-amber-200/35 blur-[2px]" />
-              </button>
-
-              <div className="mt-0.5 flex items-center gap-1">
-                <span className="max-w-[96px] truncate rounded-full border border-amber-200/20 bg-black/55 px-2.5 py-0.5 text-[11px] font-medium text-amber-100 backdrop-blur-sm">
-                  {k.nickname}
-                </span>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (!dragRef.current.moved) onBless(k.id);
-                  }}
-                  aria-label={isBlessed ? "ยกเลิกส่งใจ" : "ส่งใจอวยพร"}
-                  className={`rounded-full border px-2 py-0.5 text-[10px] backdrop-blur-sm transition ${
-                    isBlessed
-                      ? "border-rose-400/50 bg-rose-500/25 text-rose-200"
-                      : "border-white/15 bg-black/50 text-slate-200 hover:border-rose-300/50 hover:text-rose-200"
-                  }`}
-                >
-                  ♥ {k.blessings}
-                </button>
-              </div>
-
-              {k.wish && (
-                <span className="mt-1 max-w-[155px] line-clamp-2 rounded-xl border border-amber-200/15 bg-[#0e1938]/85 px-2.5 py-1 text-center text-[11px] leading-snug text-amber-50/95 shadow-md backdrop-blur-sm">
-                  “{k.wish}”
-                </span>
-              )}
-            </div>
-          );
-        })}
+        {positioned.map((item) => (
+          <KrathongItem
+            key={item.k.id}
+            item={item}
+            isSelected={item.k.id === selectedId}
+            isBlessed={blessedIds.has(item.k.id)}
+            onSelect={onSelect}
+            onBless={onBless}
+            wasDragged={wasDragged}
+          />
+        ))}
       </div>
 
-      {/* Released sky lanterns — click one to read its wish */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-[35%]">
-        {positionedLanterns.map(
-          ({ l, leftPct, topPct, scale, durationSec, delaySec }) => {
-            const isSelected = l.id === selectedLanternId;
-            const isBlessed = blessedLanternIds.has(l.id);
-            const lanternStyle = LANTERN_COLOR_STYLES[l.color];
-            return (
-              <div
-                key={l.id}
-                style={{
-                  left: `${leftPct}%`,
-                  top: `${topPct}%`,
-                  transform: `translate(-50%, -50%) scale(${
-                    isSelected ? scale * 1.22 : scale
-                  })`,
-                  animation: `lantern-drift ${durationSec}s ease-in-out ${delaySec}s infinite`,
-                }}
-                className={`group absolute ${isSelected ? "z-20" : "z-10 hover:z-20"}`}
-              >
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (!dragRef.current.moved) onSelectLantern(l.id);
-                  }}
-                  className="pointer-events-auto relative flex flex-col items-center focus:outline-none"
-                  aria-label={`โคมของ ${l.nickname}`}
-                >
-                  <span
-                    className={`pointer-events-none absolute top-0 h-16 w-14 rounded-full blur-xl transition ${lanternStyle.glow} ${
-                      isSelected ? "opacity-100" : "opacity-75 group-hover:opacity-100"
-                    }`}
-                  />
-                  <SkyLanternSvg
-                    color={l.color}
-                    className={`relative h-12 w-10 transition group-hover:scale-110 ${
-                      isSelected
-                        ? "drop-shadow-[0_0_16px_rgba(253,230,138,0.9)]"
-                        : "drop-shadow-[0_0_10px_rgba(251,191,36,0.55)]"
-                    }`}
-                  />
-                  <span
-                    className={`mt-1 max-w-[96px] truncate rounded-full border bg-black/55 px-2 py-0.5 text-[10px] font-medium text-amber-50 backdrop-blur-sm ${lanternStyle.border}`}
-                  >
-                    {l.nickname}
-                  </span>
-                  <span
-                    className={`mt-0.5 rounded-full border px-1.5 text-[9px] backdrop-blur-sm ${
-                      isBlessed
-                        ? "border-rose-400/50 bg-rose-500/25 text-rose-200"
-                        : "border-white/10 bg-black/40 text-slate-300"
-                    }`}
-                  >
-                    ♥ {l.blessings}
-                  </span>
-                  {l.wish && (
-                    <span className="pointer-events-none absolute top-full mt-1 hidden max-w-[180px] rounded-xl border border-amber-200/20 bg-[#0e1938]/90 px-2.5 py-1 text-center text-[11px] leading-snug text-amber-50/95 shadow-md backdrop-blur-sm group-hover:block">
-                      “{l.wish}”
-                    </span>
-                  )}
-                </button>
-              </div>
-            );
-          },
-        )}
+      {/* Released sky lanterns — pannable & zoomable like the river */}
+      <div
+        style={{
+          transformOrigin: "50% 60%",
+          transform: `translate3d(${panX * 0.75}px, 0, 0) scale(${zoom})`,
+          transition: dragging ? "none" : "transform 280ms cubic-bezier(0.22, 1, 0.36, 1)",
+        }}
+        className="pointer-events-none absolute inset-x-0 top-0 z-20 h-[35%]"
+      >
+        {positionedLanterns.map((item) => (
+          <LanternItem
+            key={item.l.id}
+            item={item}
+            isSelected={item.l.id === selectedLanternId}
+            isBlessed={blessedLanternIds.has(item.l.id)}
+            onSelect={onSelectLantern}
+            wasDragged={wasDragged}
+          />
+        ))}
       </div>
 
       {/* Left / Right pan controls */}
@@ -483,9 +622,9 @@ export default function RiverCanvas({
         type="button"
         onClick={(e) => {
           e.stopPropagation();
-          setPanX((prev) => clampPan(prev + 280));
+          setPanX((prev) => clampPan(prev + 340, maxPan));
         }}
-        disabled={panX >= MAX_PAN_PX}
+        disabled={panX >= maxPan}
         aria-label="เลื่อนดูฝั่งซ้าย"
         className="absolute left-2 top-1/2 z-20 -translate-y-1/2 rounded-full border border-amber-200/20 bg-black/35 px-2.5 py-1.5 text-base text-amber-100 backdrop-blur transition hover:bg-black/55 disabled:opacity-25 sm:left-3 sm:px-3 sm:py-2 sm:text-lg"
       >
@@ -495,9 +634,9 @@ export default function RiverCanvas({
         type="button"
         onClick={(e) => {
           e.stopPropagation();
-          setPanX((prev) => clampPan(prev - 280));
+          setPanX((prev) => clampPan(prev - 340, maxPan));
         }}
-        disabled={panX <= -MAX_PAN_PX}
+        disabled={panX <= -maxPan}
         aria-label="เลื่อนดูฝั่งขวา"
         className="absolute right-2 top-1/2 z-20 -translate-y-1/2 rounded-full border border-amber-200/20 bg-black/35 px-2.5 py-1.5 text-base text-amber-100 backdrop-blur transition hover:bg-black/55 disabled:opacity-25 sm:right-3 sm:px-3 sm:py-2 sm:text-lg"
       >
@@ -552,12 +691,10 @@ export default function RiverCanvas({
         @keyframes float-drift {
           0%,
           100% {
-            margin-top: 0px;
-            margin-left: -6px;
+            transform: translate3d(-6px, 0px, 0);
           }
           50% {
-            margin-top: -7px;
-            margin-left: 6px;
+            transform: translate3d(6px, -7px, 0);
           }
         }
         @keyframes star-twinkle {
@@ -574,23 +711,19 @@ export default function RiverCanvas({
         @keyframes lantern-rise {
           0%,
           100% {
-            margin-top: 4px;
-            margin-left: -4px;
+            transform: translate3d(-4px, 4px, 0);
           }
           50% {
-            margin-top: -10px;
-            margin-left: 5px;
+            transform: translate3d(5px, -10px, 0);
           }
         }
         @keyframes lantern-drift {
           0%,
           100% {
-            margin-top: 3px;
-            margin-left: -4px;
+            transform: translate3d(-4px, 3px, 0);
           }
           50% {
-            margin-top: -9px;
-            margin-left: 5px;
+            transform: translate3d(5px, -9px, 0);
           }
         }
       `}</style>

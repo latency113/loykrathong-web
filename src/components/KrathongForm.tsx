@@ -201,6 +201,7 @@ export default function KrathongForm({
                       imageUrl={image.previewUrl}
                       alt="ตัวอย่างรูปกระทง"
                       className="h-36 w-36"
+                      sparkle
                     />
                     <span className="text-xs text-slate-300">
                       {Math.round(image.bytes / 1024)} KB · {image.width}×{image.height} (คลิกเพื่อเปลี่ยนรูป)
@@ -228,7 +229,7 @@ export default function KrathongForm({
             <div className="space-y-3.5 rounded-2xl border border-white/10 bg-white/5 p-4">
               <div className="flex flex-col items-center">
                 <div className="h-28 w-28 overflow-hidden rounded-2xl bg-[#081528]/80 p-1">
-                  <ClassicKrathongSvg config={config} />
+                  <ClassicKrathongSvg config={config} sparkle />
                 </div>
                 <p className="mt-1 text-xs text-amber-200">
                   {CLASSIC_PRESET_LABELS[config.preset ?? "lotus-pink"]}

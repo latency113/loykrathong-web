@@ -61,7 +61,7 @@ export default function PixiRiverBackground({
         backgroundAlpha: 0,
         antialias: true,
         autoDensity: true,
-        resolution: Math.min(window.devicePixelRatio || 1, 2),
+        resolution: Math.min(window.devicePixelRatio || 1, 1.5),
       });
 
       if (destroyed) {
@@ -175,7 +175,7 @@ export default function PixiRiverBackground({
           const color = r % 2 === 0 ? waveA : waveB;
 
           waveGfx.moveTo(0, yBase);
-          for (let x = 0; x <= w; x += 24) {
+          for (let x = 0; x <= w; x += 36) {
             const y =
               yBase +
               Math.sin(x * 0.012 + elapsed * speed + r) * amp +

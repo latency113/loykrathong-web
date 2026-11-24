@@ -103,20 +103,23 @@ export function PhotoKrathongFrame({
   imageUrl,
   alt,
   className = "h-24 w-24",
+  sparkle = false,
 }: {
   imageUrl: string;
   alt: string;
   className?: string;
+  sparkle?: boolean;
 }) {
   return (
     <div className={`relative ${className}`}>
       {/* Circular golden photo medallion (always 1:1, never squished) */}
-      <div className="absolute left-1/2 top-0 z-10 aspect-square w-[62%] -translate-x-1/2 overflow-hidden rounded-full border-2 border-amber-300 bg-[#0b1726] shadow-[0_0_18px_rgba(251,191,36,0.45)]">
+      <div className="absolute left-1/2 top-0 z-10 aspect-square w-[62%] -translate-x-1/2 overflow-hidden rounded-full border-2 border-amber-300 bg-[#0b1726]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={imageUrl}
           alt={alt}
           loading="lazy"
+          decoding="async"
           draggable={false}
           className="h-full w-full object-cover"
         />
@@ -127,16 +130,19 @@ export function PhotoKrathongFrame({
       <img
         src="/krathongs/banana-leaf.png"
         alt=""
+        decoding="async"
         draggable={false}
-        className="pointer-events-none absolute bottom-0 left-1/2 z-0 h-[58%] w-[94%] -translate-x-1/2 object-contain drop-shadow-[0_8px_14px_rgba(0,0,0,0.6)]"
+        className="pointer-events-none absolute bottom-0 left-1/2 z-0 h-[58%] w-[94%] -translate-x-1/2 object-contain"
       />
 
-      <Lottie
-        src={sparkleAnimation}
-        autoplay
-        loop
-        className="pointer-events-none absolute inset-0 z-20 h-full w-full opacity-75"
-      />
+      {sparkle && (
+        <Lottie
+          src={sparkleAnimation}
+          autoplay
+          loop
+          className="pointer-events-none absolute inset-0 z-20 h-full w-full opacity-75"
+        />
+      )}
     </div>
   );
 }
@@ -144,9 +150,11 @@ export function PhotoKrathongFrame({
 export default function ClassicKrathongSvg({
   config,
   className = "h-full w-full",
+  sparkle = false,
 }: {
   config: KrathongConfig;
   className?: string;
+  sparkle?: boolean;
 }) {
   const preset: ClassicPreset = config.preset ?? "lotus-pink";
   const garland = Array.from({ length: config.flowers }, (_, i) => {
@@ -162,8 +170,9 @@ export default function ClassicKrathongSvg({
       <img
         src={`/krathongs/${preset}.png`}
         alt="กระทง"
+        decoding="async"
         draggable={false}
-        className="h-full w-full object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.45)]"
+        className="h-full w-full object-contain"
       />
       {garland.map((pos, idx) => (
         <span
@@ -174,7 +183,7 @@ export default function ClassicKrathongSvg({
           <FlowerIcon flower={config.flower} color={config.flowerColor} size={15} />
         </span>
       ))}
-      {config.candle && (
+      {sparkle && config.candle && (
         <Lottie
           src={sparkleAnimation}
           autoplay
