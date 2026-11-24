@@ -547,17 +547,15 @@ export default function RiverCanvas({
           </div>
         </div>
 
-        {/* Scene-specific skyline: fixed on desktop, parallax-follows panX on mobile */}
+        {/* Scene-specific skyline: smooth parallax on both desktop & mobile without edge cutoff */}
         <div
-          style={
-            {
-              "--horizon-pan": `${panX * 0.42}px`,
-              transition: dragging
-                ? "none"
-                : "transform 280ms cubic-bezier(0.22, 1, 0.36, 1)",
-            } as React.CSSProperties
-          }
-          className="horizon-parallax pointer-events-none absolute inset-x-0 bottom-0 h-full"
+          style={{
+            transform: `translate3d(calc(-50% + ${clampPan(panX * 0.22, 360)}px), 0, 0)`,
+            transition: dragging
+              ? "none"
+              : "transform 280ms cubic-bezier(0.22, 1, 0.36, 1)",
+          }}
+          className="horizon-parallax pointer-events-none absolute bottom-0 left-1/2 h-full w-[max(145vw,2200px)]"
         >
           <HorizonBackdrop scene={scene} />
         </div>
@@ -680,14 +678,6 @@ export default function RiverCanvas({
       </div>
 
       <style jsx>{`
-        @media (max-width: 639px) {
-          .horizon-parallax {
-            left: 50%;
-            right: auto;
-            width: 1440px;
-            transform: translate3d(calc(-50% + var(--horizon-pan, 0px)), 0, 0);
-          }
-        }
         @keyframes float-drift {
           0%,
           100% {
