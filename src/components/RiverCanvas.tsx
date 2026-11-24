@@ -70,7 +70,7 @@ const SCENE_THEME: Record<
   },
 };
 
-const MIN_ZOOM = 0.65;
+const MIN_ZOOM = 0.45;
 const MAX_ZOOM = 1.85;
 
 function clampPan(value: number, maxPan: number) {
@@ -96,8 +96,8 @@ function layoutKrathongs(krathongs: Krathong[], spreadX: number): PositionedKrat
   });
 
   // Gentle 2D repulsion so dense clusters spread out without overlapping wishes.
-  const minDx = 175;
-  const minDy = 13; // % of viewport height
+  const minDx = 165;
+  const minDy = 12.5; // % of viewport height
   for (let pass = 0; pass < 16; pass += 1) {
     for (let i = 0; i < items.length; i += 1) {
       for (let j = i + 1; j < items.length; j += 1) {
@@ -115,8 +115,8 @@ function layoutKrathongs(krathongs: Krathong[], spreadX: number): PositionedKrat
           const uy = (dy === 0 ? 0.3 : ny / dist) * push;
           a.offsetX = Math.max(-spreadX, Math.min(spreadX, a.offsetX - ux * minDx));
           b.offsetX = Math.max(-spreadX, Math.min(spreadX, b.offsetX + ux * minDx));
-          a.topPct = Math.max(39, Math.min(82, a.topPct - uy * minDy));
-          b.topPct = Math.max(39, Math.min(82, b.topPct + uy * minDy));
+          a.topPct = Math.max(38, Math.min(82, a.topPct - uy * minDy));
+          b.topPct = Math.max(38, Math.min(82, b.topPct + uy * minDy));
         }
       }
     }
@@ -390,9 +390,9 @@ export default function RiverCanvas({
   const pointersRef = useRef(new Map<number, { x: number; y: number }>());
   const pinchRef = useRef<{ dist: number; zoom: number } | null>(null);
 
-  const spreadX = Math.max(1200, krathongs.length * 46);
-  const skySpreadX = Math.max(760, lanterns.length * 85);
-  const maxPan = Math.max(spreadX, skySpreadX);
+  const spreadX = Math.max(1100, krathongs.length * 38);
+  const skySpreadX = Math.max(680, lanterns.length * 75);
+  const maxPan = Math.round(Math.max(spreadX, skySpreadX) * zoom + 240);
 
   const positioned = useMemo(
     () => layoutKrathongs(krathongs, spreadX),
